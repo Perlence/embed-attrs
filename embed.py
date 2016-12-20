@@ -1,4 +1,4 @@
-from functools import reduce
+from functools import reduce, partialmethod
 
 import attr
 import pytest
@@ -9,8 +9,10 @@ EMBED_PROMOTE_METADATA = '__embed_promote'
 
 def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, hash=True, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
+        cls_with_attrs = attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
+
         try:
-            orig_getattr = cls.__getattr__
+            orig_getattr = cls_with_attrs.__getattr__
         except AttributeError:
             __getattr__ = embedded_getattr
         else:
@@ -20,8 +22,12 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
                 except AttributeError:
                     return embedded_getattr(self, name)
 
-        cls.__getattr__ = __getattr__
-        return attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
+        orig_setattr = cls_with_attrs.__setattr__
+        __setattr__ = partialmethod(embedded_setattr, orig_setattr=orig_setattr)
+
+        cls_with_attrs.__getattr__ = __getattr__
+        cls_with_attrs.__setattr__ = __setattr__
+        return cls_with_attrs
 
     if maybe_cls is None:
         return wrap
@@ -42,8 +48,7 @@ def embed(cls, promote=None, default=attr.NOTHING, validator=None,
 
 
 def embedded_getattr(self, name):
-    embedded_attrs = [attrib for attrib in self.__attrs_attrs__
-                      if attrib.metadata.get(EMBED_CLS_METADATA) is not None]
+    embedded_attrs = filter_embedded_attrs(attr.fields(type(self)))
 
     promoted_attrs = reduce(lambda a, b: a.union(b),
                             [set(attrib.metadata.get(EMBED_PROMOTE_METADATA, []))
@@ -62,6 +67,34 @@ def embedded_getattr(self, name):
             continue
     else:
         raise err
+
+
+def embedded_setattr(self, name, value, orig_setattr, top=True):
+    fields = attr.fields(type(self))
+    names = (attrib.name for attrib in fields)
+    if name in names:
+        orig_setattr(self, name, value)
+        return
+
+    embedded_attrs = filter_embedded_attrs(fields)
+    for attrib in embedded_attrs:
+        embedded_obj = getattr(self, attrib.name)
+        try:
+            embedded_setattr(embedded_obj, name, value, orig_setattr, top=False)
+            return
+        except AttributeError:
+            continue
+
+    if top:
+        orig_setattr(self, name, value)
+    else:
+        raise AttributeError("'{}' object has no attribute '{}'"
+                             .format(type(self).__name__, name))
+
+
+def filter_embedded_attrs(attrs):
+    return tuple(attrib for attrib in attrs
+                 if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
 
 
 @attr.s
@@ -102,3 +135,11 @@ def test_ferrari():
     with pytest.raises(TypeError) as excinfo:
         embed(NonAttr)
     assert 'must have attrs' in str(excinfo.value)
+
+    f.wheel_count = 8
+    assert f.car.wheel_count == 8
+    with pytest.raises(AttributeError):
+        object.__getattribute__(f, 'wheel_count')
+
+    f.nonexistent = 'not anymore'
+    assert object.__getattribute__(f, 'nonexistent') is 'not anymore'
