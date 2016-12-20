@@ -1,6 +1,7 @@
 from functools import reduce
 
 import attr
+import pytest
 
 EMBED_CLS_METADATA = '__embed_cls'
 EMBED_PROMOTE_METADATA = '__embed_promote'
@@ -90,7 +91,6 @@ def test_ferrari():
     f.car = c
     assert f.number_of_wheels() == 6
 
-    try:
+    with pytest.raises(AttributeError) as excinfo:
         f.nonexistent
-    except AttributeError as err:
-        assert str(err) == "'Ferrari' object has no attribute 'nonexistent'"
+    assert str(excinfo.value) == "'Ferrari' object has no attribute 'nonexistent'"
