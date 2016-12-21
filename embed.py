@@ -1,6 +1,9 @@
 import attr as _attr
 import pytest
 
+__all__ = ('attrs', 'attr', 'PromotedAttribute', 'AmbiguousAttribute',
+           'INIT', 'EMBED_CLS_METADATA', 'EMBED_EXTRA_METADATA')
+
 EMBED_CLS_METADATA = '__embed_cls'
 EMBED_EXTRA_METADATA = '__embed_extra'
 
