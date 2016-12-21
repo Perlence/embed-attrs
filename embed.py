@@ -153,6 +153,9 @@ def test_dont_replace():
 
     b = B()
     assert b.x == 'parent'
+    b.x = 'new'
+    assert b.x == 'new'
+    assert b.a.x == 'embedded'
 
 
 def test_ambiguous():
