@@ -2,19 +2,20 @@ import attr
 import pytest
 
 EMBED_CLS_METADATA = '__embed_cls'
-EMBED_PROMOTE_METADATA = '__embed_promote'
+EMBED_EXTRA_METADATA = '__embed_extra'
 
 
-def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, hash=True, init=True, slots=False, frozen=False, str=False):
+def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
+              hash=True, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
         cls_with_attrs = attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
         embedded_attrs = get_embedded_attrs(cls_with_attrs)
-        promoted_names = get_promoted_names(embedded_attrs)
+        extra_names = get_extra_promoted_names(embedded_attrs)
         for embedded_attr in embedded_attrs:
             embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
             for promoted_name in dir(embedded_cls):
-                if promoted_name.startswith('_') and promoted_name not in promoted_names:
+                if promoted_name.startswith('_') and promoted_name not in extra_names:
                     continue
                 local_attr = getattr(cls_with_attrs, promoted_name, None)
                 if local_attr is None:
@@ -30,13 +31,13 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
         return wrap(maybe_cls)
 
 
-def embed(cls, promote=None, default=attr.NOTHING, validator=None,
-          repr=True, cmp=True, hash=True, init=True, convert=None, metadata=None):
+def embed(cls, extra=None, default=attr.NOTHING, validator=None, repr=True,
+          cmp=True, hash=True, init=True, convert=None, metadata=None):
     if metadata is None:
         metadata = {}
     metadata[EMBED_CLS_METADATA] = cls
-    if promote is not None:
-        metadata[EMBED_PROMOTE_METADATA] = promote.replace(',', ' ').split()
+    if extra is not None:
+        metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
     return attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 
@@ -45,11 +46,11 @@ def get_embedded_attrs(cls_with_attrs):
                  if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
 
 
-def get_promoted_names(embedded_attrs):
+def get_extra_promoted_names(embedded_attrs):
     result = set()
     for attrib in embedded_attrs:
-        promoted_names = attrib.metadata.get(EMBED_PROMOTE_METADATA, [])
-        result = result.union(set(promoted_names))
+        extra_names = attrib.metadata.get(EMBED_EXTRA_METADATA, [])
+        result = result.union(set(extra_names))
     return result
 
 
@@ -102,7 +103,7 @@ def test_ferrari():
 
     @embedding
     class Ferrari:
-        car = embed(Car, promote='_sunder __dunder__')
+        car = embed(Car, extra='_sunder __dunder__')
 
     f = Ferrari(Car(4))
     assert f.number_of_wheels() == 4
