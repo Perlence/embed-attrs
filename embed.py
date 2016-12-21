@@ -32,8 +32,6 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
 
 def embed(cls, promote=None, default=attr.NOTHING, validator=None,
           repr=True, cmp=True, hash=True, init=True, convert=None, metadata=None):
-    if not attr.has(cls):
-        raise TypeError("embedded class '{}' must have attrs attributes".format(cls.__name__))
     if metadata is None:
         metadata = {}
     metadata[EMBED_CLS_METADATA] = cls
@@ -118,12 +116,6 @@ def test_ferrari():
     with pytest.raises(AttributeError) as excinfo:
         f.nonexistent
     assert str(excinfo.value) == "'Ferrari' object has no attribute 'nonexistent'"
-
-    class NonAttr:
-        pass
-    with pytest.raises(TypeError) as excinfo:
-        embed(NonAttr)
-    assert 'must have attrs' in str(excinfo.value)
 
     f.wheel_count = 8
     assert f.car.wheel_count == 8
