@@ -90,13 +90,13 @@ class AmbiguousAttribute:
         raise AttributeError("ambiguous selector '{}'".format(self.name))
 
 
-def test_ferrari():
+def test_person():
     @_attr.s
-    class Car:
-        wheel_count = _attr.ib(default=0)
+    class Person:
+        name = _attr.ib(default='')
 
-        def number_of_wheels(self):
-            return self.wheel_count
+        def talk(self):
+            return 'Hi, my name is {}'.format(self.name)
 
         def _sunder(self):
             return 'sunder'
@@ -105,39 +105,40 @@ def test_ferrari():
             return 'dunder'
 
     @attrs
-    class Ferrari:
-        car = attr(Car, extra='_sunder __dunder__')
+    class Android:
+        person = attr(Person, default=INIT, extra='_sunder __dunder__')
+        model = _attr.ib(default='')
 
-    f = Ferrari(Car(4))
-    assert f.number_of_wheels() == 4
-    assert f._sunder() == 'sunder'
-    assert f.__dunder__() == 'dunder'
+    a = Android(Person('Marvin'))
+    assert a.talk() == 'Hi, my name is Marvin'
+    assert a._sunder() == 'sunder'
+    assert a.__dunder__() == 'dunder'
 
-    c = Car(6)
-    f.car = c
-    assert f.number_of_wheels() == 6
+    p = Person('WALL-E')
+    a.person = p
+    assert a.talk() == 'Hi, my name is WALL-E'
 
     with pytest.raises(AttributeError) as excinfo:
-        f.nonexistent
-    assert str(excinfo.value) == "'Ferrari' object has no attribute 'nonexistent'"
+        a.nonexistent
+    assert str(excinfo.value) == "'Android' object has no attribute 'nonexistent'"
 
-    f.wheel_count = 8
-    assert f.car.wheel_count == 8
-    f.car.wheel_count = 6
-    assert f.wheel_count == 6
+    a.name = 'Bender'
+    assert a.person.name == 'Bender'
+    a.person.name = 'Daniel'
+    assert a.name == 'Daniel'
 
-    f.nonexistent = 'not anymore'
-    assert getattr(f, 'nonexistent') is 'not anymore'
+    a.nonexistent = 'not anymore'
+    assert getattr(a, 'nonexistent') is 'not anymore'
 
     @attrs(frozen=True)
-    class FrozenCar:
-        car = attr(Car)
+    class FrozenPerson:
+        person = attr(Person)
 
-    fc = FrozenCar(Car(4))
+    fp = FrozenPerson(Person('Marvin'))
     with pytest.raises(_attr.exceptions.FrozenInstanceError):
-        fc.car = Car(3)
+        fp.person = Person('Marvin')
     with pytest.raises(_attr.exceptions.FrozenInstanceError):
-        fc.number_of_wheels = 5
+        fp.name = 'Bender'
 
 
 def test_dont_replace():
