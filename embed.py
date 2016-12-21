@@ -1,4 +1,4 @@
-import attr
+import attr as _attr
 import pytest
 
 EMBED_CLS_METADATA = '__embed_cls'
@@ -7,10 +7,10 @@ EMBED_EXTRA_METADATA = '__embed_extra'
 INIT = object()
 
 
-def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
-              hash=True, init=True, slots=False, frozen=False, str=False):
+def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
+          hash=True, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
-        cls_with_attrs = attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
+        cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
         embedded_attrs = get_embedded_attrs(cls_with_attrs)
         extra_names = get_extra_promoted_names(embedded_attrs)
@@ -33,20 +33,20 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
         return wrap(maybe_cls)
 
 
-def embed(cls, extra=None, default=attr.NOTHING, validator=None, repr=True,
-          cmp=True, hash=True, init=True, convert=None, metadata=None):
+def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
+         cmp=True, hash=True, init=True, convert=None, metadata=None):
     if metadata is None:
         metadata = {}
     metadata[EMBED_CLS_METADATA] = cls
     if extra is not None:
         metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
     if default is INIT:
-        default = attr.Factory(cls)
-    return attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
+        default = _attr.Factory(cls)
+    return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 
 def get_embedded_attrs(cls_with_attrs):
-    return tuple(attrib for attrib in attr.fields(cls_with_attrs)
+    return tuple(attrib for attrib in _attr.fields(cls_with_attrs)
                  if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
 
 
@@ -58,10 +58,10 @@ def get_extra_promoted_names(embedded_attrs):
     return result
 
 
-@attr.s
+@_attr.s
 class PromotedAttribute:
-    name = attr.ib()
-    embedded_attr = attr.ib()
+    name = _attr.ib()
+    embedded_attr = _attr.ib()
 
     def __get__(self, obj, cls=None):
         if obj is None:
@@ -74,9 +74,9 @@ class PromotedAttribute:
         setattr(embedded_obj, self.name, value)
 
 
-@attr.s
+@_attr.s
 class AmbiguousAttribute:
-    name = attr.ib()
+    name = _attr.ib()
 
     def __get__(self, obj, cls=None):
         if obj is None:
@@ -88,9 +88,9 @@ class AmbiguousAttribute:
 
 
 def test_ferrari():
-    @attr.s
+    @_attr.s
     class Car:
-        wheel_count = attr.ib(default=0)
+        wheel_count = _attr.ib(default=0)
 
         def number_of_wheels(self):
             return self.wheel_count
@@ -101,9 +101,9 @@ def test_ferrari():
         def __dunder__(self):
             return 'dunder'
 
-    @embedding
+    @attrs
     class Ferrari:
-        car = embed(Car, extra='_sunder __dunder__')
+        car = attr(Car, extra='_sunder __dunder__')
 
     f = Ferrari(Car(4))
     assert f.number_of_wheels() == 4
@@ -126,26 +126,26 @@ def test_ferrari():
     f.nonexistent = 'not anymore'
     assert getattr(f, 'nonexistent') is 'not anymore'
 
-    @embedding(frozen=True)
+    @attrs(frozen=True)
     class FrozenCar:
-        car = embed(Car)
+        car = attr(Car)
 
     fc = FrozenCar(Car(4))
-    with pytest.raises(attr.exceptions.FrozenInstanceError):
+    with pytest.raises(_attr.exceptions.FrozenInstanceError):
         fc.car = Car(3)
-    with pytest.raises(attr.exceptions.FrozenInstanceError):
+    with pytest.raises(_attr.exceptions.FrozenInstanceError):
         fc.number_of_wheels = 5
 
 
 def test_dont_replace():
-    @attr.s
+    @_attr.s
     class A:
-        x = attr.ib(default='embedded')
+        x = _attr.ib(default='embedded')
 
-    @embedding
+    @attrs
     class B:
-        a = embed(A, default=INIT)
-        x = attr.ib(default='parent')
+        a = attr(A, default=INIT)
+        x = _attr.ib(default='parent')
 
     b = B()
     assert b.x == 'parent'
@@ -155,18 +155,18 @@ def test_dont_replace():
 
 
 def test_ambiguous():
-    @attr.s
+    @_attr.s
     class A:
-        x = attr.ib(default=0)
+        x = _attr.ib(default=0)
 
-    @attr.s
+    @_attr.s
     class B:
-        x = attr.ib(default=0)
+        x = _attr.ib(default=0)
 
-    @embedding
+    @attrs
     class Ambiguous:
-        a = embed(A, default=INIT)
-        b = embed(B, default=INIT)
+        a = attr(A, default=INIT)
+        b = attr(B, default=INIT)
 
     amb = Ambiguous()
     with pytest.raises(AttributeError) as excinfo:
@@ -175,17 +175,17 @@ def test_ambiguous():
 
 
 def test_nesting():
-    @attr.s
+    @_attr.s
     class C:
-        d = attr.ib(default=0)
+        d = _attr.ib(default=0)
 
-    @embedding
+    @attrs
     class B:
-        c = embed(C, default=INIT)
+        c = attr(C, default=INIT)
 
-    @embedding
+    @attrs
     class A:
-        b = embed(B, default=INIT)
+        b = attr(B, default=INIT)
 
     a = A()
     assert a.b.c.d == 0
