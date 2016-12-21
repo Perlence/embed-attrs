@@ -21,12 +21,13 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
                     return orig_getattr(self, name)
                 except AttributeError:
                     return embedded_getattr(self, name)
-
-        orig_setattr = cls_with_attrs.__setattr__
-        __setattr__ = partialmethod(embedded_setattr, orig_setattr=orig_setattr)
-
         cls_with_attrs.__getattr__ = __getattr__
-        cls_with_attrs.__setattr__ = __setattr__
+
+        if not frozen:
+            orig_setattr = cls_with_attrs.__setattr__
+            __setattr__ = partialmethod(embedded_setattr, orig_setattr=orig_setattr)
+            cls_with_attrs.__setattr__ = __setattr__
+
         return cls_with_attrs
 
     if maybe_cls is None:
@@ -143,3 +144,13 @@ def test_ferrari():
 
     f.nonexistent = 'not anymore'
     assert object.__getattribute__(f, 'nonexistent') is 'not anymore'
+
+    @embedding(frozen=True)
+    class FrozenCar:
+        car = embed(Car)
+
+    fc = FrozenCar(Car(4))
+    with pytest.raises(attr.exceptions.FrozenInstanceError):
+        fc.car = Car(3)
+    with pytest.raises(attr.exceptions.FrozenInstanceError):
+        fc.number_of_wheels = 5
