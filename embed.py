@@ -146,6 +146,9 @@ def test_dont_replace():
     class A:
         x = _attr.ib(default='embedded')
 
+        def fn(self):
+            return self.x
+
     @attrs
     class B:
         a = attr(A, default=INIT)
@@ -153,6 +156,7 @@ def test_dont_replace():
 
     b = B()
     assert b.x == 'parent'
+    assert b.fn() == 'embedded'
     b.x = 'new'
     assert b.x == 'new'
     assert b.a.x == 'embedded'
