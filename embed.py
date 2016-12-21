@@ -16,7 +16,11 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
             for promoted_name in dir(embedded_cls):
                 if promoted_name.startswith('_') and promoted_name not in promoted_names:
                     continue
-                setattr(cls_with_attrs, promoted_name, PromotedAttribute(promoted_name, embedded_attr))
+                local_attr = getattr(cls_with_attrs, promoted_name, None)
+                if local_attr is None:
+                    setattr(cls_with_attrs, promoted_name, PromotedAttribute(promoted_name, embedded_attr))
+                elif isinstance(local_attr, PromotedAttribute):
+                    setattr(cls_with_attrs, promoted_name, AmbiguousAttribute(promoted_name))
 
         return cls_with_attrs
 
@@ -68,25 +72,40 @@ class PromotedAttribute:
 
 
 @attr.s
-class Car:
-    wheel_count = attr.ib(default=0)
+class AmbiguousAttribute:
+    name = attr.ib()
 
-    def number_of_wheels(self):
-        return self.wheel_count
+    def __get__(self, obj, cls=None):
+        if obj is None:
+            return self
+        raise AmbiguousError("ambiguous selector '{}'".format(self.name))
 
-    def _sunder(self):
-        return 'sunder'
-
-    def __dunder__(self):
-        return 'dunder'
+    def __set__(self, obj, value):
+        raise AmbiguousError("ambiguous selector '{}'".format(self.name))
 
 
-@embedding
-class Ferrari:
-    car = embed(Car, promote='_sunder __dunder__')
+class AmbiguousError(Exception):
+    pass
 
 
 def test_ferrari():
+    @attr.s
+    class Car:
+        wheel_count = attr.ib(default=0)
+
+        def number_of_wheels(self):
+            return self.wheel_count
+
+        def _sunder(self):
+            return 'sunder'
+
+        def __dunder__(self):
+            return 'dunder'
+
+    @embedding
+    class Ferrari:
+        car = embed(Car, promote='_sunder __dunder__')
+
     f = Ferrari(Car(4))
     assert f.number_of_wheels() == 4
     assert f._sunder() == 'sunder'
@@ -123,3 +142,56 @@ def test_ferrari():
         fc.car = Car(3)
     with pytest.raises(attr.exceptions.FrozenInstanceError):
         fc.number_of_wheels = 5
+
+
+def test_dont_replace():
+    @attr.s
+    class A:
+        x = attr.ib(default='embedded')
+
+    @embedding
+    class B:
+        a = embed(A, default=attr.Factory(A))
+        x = attr.ib(default='parent')
+
+    b = B()
+    assert b.x == 'parent'
+
+
+def test_ambiguous():
+    @attr.s
+    class A:
+        x = attr.ib(default=0)
+
+    @attr.s
+    class B:
+        x = attr.ib(default=0)
+
+    @embedding
+    class Ambiguous:
+        a = embed(A, default=attr.Factory(A))
+        b = embed(B, default=attr.Factory(A))
+
+    amb = Ambiguous()
+    with pytest.raises(AmbiguousError):
+        amb.x = 1
+
+
+def test_nesting():
+    @attr.s
+    class C:
+        d = attr.ib(default=0)
+
+    @embedding
+    class B:
+        c = embed(C, default=attr.Factory(C))
+
+    @embedding
+    class A:
+        b = embed(B, default=attr.Factory(B))
+
+    a = A()
+    assert a.b.c.d == 0
+    a.d = 1
+    assert a.b.c.d == 1
+    assert a.c is a.b.c
