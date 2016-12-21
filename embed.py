@@ -1,5 +1,3 @@
-from functools import reduce, partialmethod
-
 import attr
 import pytest
 
@@ -11,22 +9,14 @@ def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True, has
     def wrap(cls):
         cls_with_attrs = attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
-        try:
-            orig_getattr = cls_with_attrs.__getattr__
-        except AttributeError:
-            __getattr__ = embedded_getattr
-        else:
-            def __getattr__(self, name):
-                try:
-                    return orig_getattr(self, name)
-                except AttributeError:
-                    return embedded_getattr(self, name)
-        cls_with_attrs.__getattr__ = __getattr__
-
-        if not frozen:
-            orig_setattr = cls_with_attrs.__setattr__
-            __setattr__ = partialmethod(embedded_setattr, orig_setattr=orig_setattr)
-            cls_with_attrs.__setattr__ = __setattr__
+        embedded_attrs = get_embedded_attrs(cls_with_attrs)
+        promoted_names = get_promoted_names(embedded_attrs)
+        for embedded_attr in embedded_attrs:
+            embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
+            for promoted_name in dir(embedded_cls):
+                if promoted_name.startswith('_') and promoted_name not in promoted_names:
+                    continue
+                setattr(cls_with_attrs, promoted_name, PromotedAttribute(promoted_name, embedded_attr))
 
         return cls_with_attrs
 
@@ -48,54 +38,33 @@ def embed(cls, promote=None, default=attr.NOTHING, validator=None,
     return attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 
-def embedded_getattr(self, name):
-    embedded_attrs = filter_embedded_attrs(attr.fields(type(self)))
-
-    promoted_attrs = reduce(lambda a, b: a.union(b),
-                            [set(attrib.metadata.get(EMBED_PROMOTE_METADATA, []))
-                             for attrib in embedded_attrs],
-                            set())
-    err = AttributeError("'{}' object has no attribute '{}'"
-                         .format(type(self).__name__, name))
-    if name.startswith('_') and name not in promoted_attrs:
-        raise err
-
-    for attrib in embedded_attrs:
-        embedded_obj = getattr(self, attrib.name)
-        try:
-            return getattr(embedded_obj, name)
-        except AttributeError:
-            continue
-    else:
-        raise err
-
-
-def embedded_setattr(self, name, value, orig_setattr, top=True):
-    fields = attr.fields(type(self))
-    names = (attrib.name for attrib in fields)
-    if name in names:
-        orig_setattr(self, name, value)
-        return
-
-    embedded_attrs = filter_embedded_attrs(fields)
-    for attrib in embedded_attrs:
-        embedded_obj = getattr(self, attrib.name)
-        try:
-            embedded_setattr(embedded_obj, name, value, orig_setattr, top=False)
-            return
-        except AttributeError:
-            continue
-
-    if top:
-        orig_setattr(self, name, value)
-    else:
-        raise AttributeError("'{}' object has no attribute '{}'"
-                             .format(type(self).__name__, name))
-
-
-def filter_embedded_attrs(attrs):
-    return tuple(attrib for attrib in attrs
+def get_embedded_attrs(cls_with_attrs):
+    return tuple(attrib for attrib in attr.fields(cls_with_attrs)
                  if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
+
+
+def get_promoted_names(embedded_attrs):
+    result = set()
+    for attrib in embedded_attrs:
+        promoted_names = attrib.metadata.get(EMBED_PROMOTE_METADATA, [])
+        result = result.union(set(promoted_names))
+    return result
+
+
+@attr.s
+class PromotedAttribute:
+    name = attr.ib()
+    embedded_attr = attr.ib()
+
+    def __get__(self, obj, cls=None):
+        if obj is None:
+            return self
+        embedded_obj = getattr(obj, self.embedded_attr.name)
+        return getattr(embedded_obj, self.name)
+
+    def __set__(self, obj, value):
+        embedded_obj = getattr(obj, self.embedded_attr.name)
+        setattr(embedded_obj, self.name, value)
 
 
 @attr.s
@@ -139,11 +108,11 @@ def test_ferrari():
 
     f.wheel_count = 8
     assert f.car.wheel_count == 8
-    with pytest.raises(AttributeError):
-        object.__getattribute__(f, 'wheel_count')
+    f.car.wheel_count = 6
+    assert f.wheel_count == 6
 
     f.nonexistent = 'not anymore'
-    assert object.__getattribute__(f, 'nonexistent') is 'not anymore'
+    assert getattr(f, 'nonexistent') is 'not anymore'
 
     @embedding(frozen=True)
     class FrozenCar:
