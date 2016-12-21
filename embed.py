@@ -4,6 +4,8 @@ import pytest
 EMBED_CLS_METADATA = '__embed_cls'
 EMBED_EXTRA_METADATA = '__embed_extra'
 
+INIT = object()
+
 
 def embedding(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
               hash=True, init=True, slots=False, frozen=False, str=False):
@@ -38,6 +40,8 @@ def embed(cls, extra=None, default=attr.NOTHING, validator=None, repr=True,
     metadata[EMBED_CLS_METADATA] = cls
     if extra is not None:
         metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
+    if default is INIT:
+        default = attr.Factory(cls)
     return attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 
@@ -144,7 +148,7 @@ def test_dont_replace():
 
     @embedding
     class B:
-        a = embed(A, default=attr.Factory(A))
+        a = embed(A, default=INIT)
         x = attr.ib(default='parent')
 
     b = B()
@@ -162,8 +166,8 @@ def test_ambiguous():
 
     @embedding
     class Ambiguous:
-        a = embed(A, default=attr.Factory(A))
-        b = embed(B, default=attr.Factory(A))
+        a = embed(A, default=INIT)
+        b = embed(B, default=INIT)
 
     amb = Ambiguous()
     with pytest.raises(AmbiguousError):
@@ -177,11 +181,11 @@ def test_nesting():
 
     @embedding
     class B:
-        c = embed(C, default=attr.Factory(C))
+        c = embed(C, default=INIT)
 
     @embedding
     class A:
-        b = embed(B, default=attr.Factory(B))
+        b = embed(B, default=INIT)
 
     a = A()
     assert a.b.c.d == 0
