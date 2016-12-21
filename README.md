@@ -1,7 +1,7 @@
 embed-attrs
 ===========
 
-Borrow attributes of other classes by *embedding* them. An experimental addon for [attrs](https://github.com/hynek/attrs).
+Borrow attributes from other classes by *embedding* them. An experimental addon for [attrs](https://github.com/hynek/attrs).
 
 
 Idea
@@ -35,6 +35,7 @@ class Person:
 @embed.attrs
 class Android:
     person = embed.attr(Person, default=embed.INIT, extra='_sunder __dunder__')
+    # Constant *INIT* here is a shortcut for `attr.Factory(Person)`
     # Keyword *extra* is used to select private attributes for promotion
     model = attr.ib(default='')
 
