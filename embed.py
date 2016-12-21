@@ -81,14 +81,10 @@ class AmbiguousAttribute:
     def __get__(self, obj, cls=None):
         if obj is None:
             return self
-        raise AmbiguousError("ambiguous selector '{}'".format(self.name))
+        raise AttributeError("ambiguous selector '{}'".format(self.name))
 
     def __set__(self, obj, value):
-        raise AmbiguousError("ambiguous selector '{}'".format(self.name))
-
-
-class AmbiguousError(Exception):
-    pass
+        raise AttributeError("ambiguous selector '{}'".format(self.name))
 
 
 def test_ferrari():
@@ -173,8 +169,9 @@ def test_ambiguous():
         b = embed(B, default=INIT)
 
     amb = Ambiguous()
-    with pytest.raises(AmbiguousError):
+    with pytest.raises(AttributeError) as excinfo:
         amb.x = 1
+    assert 'ambiguous selector' in str(excinfo.value)
 
 
 def test_nesting():
