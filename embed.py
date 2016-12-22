@@ -14,18 +14,12 @@ def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
     def wrap(cls):
         cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
-        embedded_attrs = get_embedded_attrs(cls_with_attrs)
-        extra_names = get_extra_promoted_names(embedded_attrs)
+        embedded_attrs = _get_embedded_attrs(cls_with_attrs)
+        extra_names = _get_extra_promoted_names(embedded_attrs)
         for embedded_attr in embedded_attrs:
             embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
-            for promoted_name in dir(embedded_cls):
-                if promoted_name.startswith('_') and promoted_name not in extra_names:
-                    continue
-                local_attr = getattr(cls_with_attrs, promoted_name, None)
-                if local_attr is None:
-                    setattr(cls_with_attrs, promoted_name, PromotedAttribute(promoted_name, embedded_attr))
-                elif isinstance(local_attr, PromotedAttribute):
-                    setattr(cls_with_attrs, promoted_name, AmbiguousAttribute(promoted_name))
+            for promoted_name in _attrs_to_promote(embedded_cls, extra_names):
+                _try_to_promote(cls_with_attrs, promoted_name, embedded_attr)
 
         return cls_with_attrs
 
@@ -33,6 +27,35 @@ def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
         return wrap
     else:
         return wrap(maybe_cls)
+
+
+def _get_embedded_attrs(cls_with_attrs):
+    return tuple(attrib for attrib in _attr.fields(cls_with_attrs)
+                 if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
+
+
+def _get_extra_promoted_names(embedded_attrs):
+    result = set()
+    for attrib in embedded_attrs:
+        extra_names = attrib.metadata.get(EMBED_EXTRA_METADATA, [])
+        result = result.union(set(extra_names))
+    return result
+
+
+def _attrs_to_promote(embedded_cls, extra_names):
+    for name in dir(embedded_cls):
+        if not name.startswith('_') or name in extra_names:
+            yield name
+
+
+def _try_to_promote(cls, name, embedded_attr):
+    try:
+        local_attr = getattr(cls, name)
+    except AttributeError:
+        setattr(cls, name, PromotedAttribute(name, embedded_attr))
+    else:
+        if isinstance(local_attr, PromotedAttribute):
+            setattr(cls, name, AmbiguousAttribute(name))
 
 
 def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
@@ -45,19 +68,6 @@ def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
     if default is INIT:
         default = _attr.Factory(cls)
     return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
-
-
-def get_embedded_attrs(cls_with_attrs):
-    return tuple(attrib for attrib in _attr.fields(cls_with_attrs)
-                 if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
-
-
-def get_extra_promoted_names(embedded_attrs):
-    result = set()
-    for attrib in embedded_attrs:
-        extra_names = attrib.metadata.get(EMBED_EXTRA_METADATA, [])
-        result = result.union(set(extra_names))
-    return result
 
 
 @_attr.s
