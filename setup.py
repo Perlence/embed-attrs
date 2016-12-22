@@ -1,11 +1,15 @@
 from setuptools import setup
 
+with open('README.rst') as fp:
+    README = fp.read()
+
 setup(
     name='embed-attrs',
     version='0.1',
     author='Sviatoslav Abakumov',
     author_email='dust.harvesting@gmail.com',
     description='Borrow attributes from other classes by embedding them',
+    long_description=README,
     url='https://github.com/Perlence/embed-attrs',
     download_url='https://github.com/Perlence/embed-attrs/archive/master.zip',
     py_modules=['embed'],
