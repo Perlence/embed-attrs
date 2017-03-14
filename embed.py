@@ -67,6 +67,8 @@ def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
         metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
     if default is INIT:
         default = _attr.Factory(cls)
+    if validator is None:
+        validator = _attr.validators.instance_of(cls)
     return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 

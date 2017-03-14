@@ -114,3 +114,20 @@ def test_nesting():
     a.d = 1
     assert a.b.c.d == 1
     assert a.c is a.b.c
+
+
+def test_validator():
+    @attr.s
+    class Person:
+        name = attr.ib(default='')
+
+    @embed.attrs
+    class Android:
+        person = embed.attr(Person, default=embed.INIT)
+        model = attr.ib(default='')
+
+    assert Android() == Android(Person(''), '')
+
+    with pytest.raises(TypeError) as excinfo:
+        Android(42)
+    assert "'person' must be" in str(excinfo.value)
