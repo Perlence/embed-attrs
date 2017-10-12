@@ -24,7 +24,7 @@ def test_androids():
 
     @embed.attrs
     class Android:
-        person = embed.attr(Person, default=embed.INIT, extra='_sunder __dunder__')
+        person = embed.attr(Person, extra='_sunder __dunder__')
         model = attr.ib(default='')
 
         @property
@@ -74,7 +74,7 @@ def test_dont_replace():
 
     @embed.attrs
     class B:
-        a = embed.attr(A, default=embed.INIT)
+        a = embed.attr(A)
         x = attr.ib(default='parent')
 
     b = B()
@@ -96,8 +96,8 @@ def test_ambiguous():
 
     @embed.attrs
     class Ambiguous:
-        a = embed.attr(A, default=embed.INIT)
-        b = embed.attr(B, default=embed.INIT)
+        a = embed.attr(A)
+        b = embed.attr(B)
 
     amb = Ambiguous()
     with pytest.raises(AttributeError) as excinfo:
@@ -115,11 +115,11 @@ def test_nesting():
 
     @embed.attrs
     class B:
-        c = embed.attr(C, default=embed.INIT)
+        c = embed.attr(C)
 
     @embed.attrs
     class A:
-        b = embed.attr(B, default=embed.INIT)
+        b = embed.attr(B)
 
     a = A()
     assert a.b.c.d == 0

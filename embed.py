@@ -8,8 +8,9 @@ EMBED_EXTRA_METADATA = '__embed_extra'
 INIT = object()
 
 
-def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
-         cmp=True, hash=None, init=True, convert=None, metadata=None):
+def attr(cls, extra=None, default=INIT, validator=None,
+         repr=True, cmp=True, hash=None, init=True, convert=None,
+         metadata=None):
     if metadata is None:
         metadata = {}
     metadata[EMBED_CLS_METADATA] = cls

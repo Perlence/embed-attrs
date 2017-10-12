@@ -37,7 +37,7 @@ An example from "An Introduction to Programming in Go", converted to Python with
 
     @embed.attrs
     class Android:
-        person = embed.attr(Person, default=embed.INIT, extra='_sunder __dunder__')
+        person = embed.attr(Person, extra='_sunder __dunder__')
         # Constant *INIT* here is a shortcut for `attr.Factory(Person)`
         # Keyword *extra* is used to select private attributes for promotion
         model = attr.ib(default='')
