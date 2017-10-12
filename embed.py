@@ -28,10 +28,8 @@ def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
         cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
         embedded_attrs = _get_embedded_attrs(cls_with_attrs)
-        extra_names = _get_extra_promoted_names(embedded_attrs)
         for embedded_attr in embedded_attrs:
-            embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
-            for promoted_name in _attrs_to_promote(embedded_cls, extra_names):
+            for promoted_name in _attrs_to_promote(embedded_attr):
                 _try_to_promote(cls_with_attrs, promoted_name, embedded_attr)
 
         return cls_with_attrs
@@ -47,15 +45,9 @@ def _get_embedded_attrs(cls_with_attrs):
                  if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
 
 
-def _get_extra_promoted_names(embedded_attrs):
-    result = set()
-    for attrib in embedded_attrs:
-        extra_names = attrib.metadata.get(EMBED_EXTRA_METADATA, [])
-        result = result.union(set(extra_names))
-    return result
-
-
-def _attrs_to_promote(embedded_cls, extra_names):
+def _attrs_to_promote(embedded_attr):
+    embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
+    extra_names = embedded_attr.metadata.get(EMBED_EXTRA_METADATA, [])
     for name in dir(embedded_cls):
         if not name.startswith('_') or name in extra_names:
             yield name
