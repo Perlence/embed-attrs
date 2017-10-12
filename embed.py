@@ -22,8 +22,8 @@ def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
     return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
 
 
-def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
-          hash=None, init=True, slots=False, frozen=False, str=False):
+def attributes(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
+               hash=None, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
         cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
@@ -38,6 +38,9 @@ def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
         return wrap
     else:
         return wrap(maybe_cls)
+
+
+attrs = attributes
 
 
 def _get_embedded_attrs(cls_with_attrs):
