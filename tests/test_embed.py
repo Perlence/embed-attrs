@@ -12,6 +12,10 @@ def test_androids():
         def talk(self):
             return 'Hi, my name is {}'.format(self.name)
 
+        @property
+        def upper_name(self):
+            return self.name.upper()
+
         def _sunder(self):
             return 'sunder'
 
@@ -23,8 +27,13 @@ def test_androids():
         person = embed.attr(Person, default=embed.INIT, extra='_sunder __dunder__')
         model = attr.ib(default='')
 
+        @property
+        def upper_name(self):
+            return 'ANDROID ' + self.name.upper()
+
     a = Android(Person('Marvin'))
     assert a.talk() == 'Hi, my name is Marvin'
+    assert a.upper_name == 'ANDROID MARVIN'
     assert a._sunder() == 'sunder'
     assert a.__dunder__() == 'dunder'
 
@@ -42,7 +51,7 @@ def test_androids():
     assert a.name == 'Daniel'
 
     a.nonexistent = 'not anymore'
-    assert getattr(a, 'nonexistent') is 'not anymore'
+    assert a.nonexistent is 'not anymore'
 
     @embed.attrs(frozen=True)
     class FrozenPerson:
@@ -91,6 +100,9 @@ def test_ambiguous():
         b = embed.attr(B, default=embed.INIT)
 
     amb = Ambiguous()
+    with pytest.raises(AttributeError) as excinfo:
+        amb.x
+    assert 'ambiguous selector' in str(excinfo.value)
     with pytest.raises(AttributeError) as excinfo:
         amb.x = 1
     assert 'ambiguous selector' in str(excinfo.value)

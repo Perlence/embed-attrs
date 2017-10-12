@@ -1,13 +1,15 @@
 embed-attrs
 ===========
 
-Borrow attributes from other classes by *embedding* them. An experimental addon for `attrs <https://github.com/hynek/attrs>`_.
+Borrow attributes from other classes by *embedding* them. An experimental extension of `attrs
+<https://github.com/hynek/attrs>`_.
 
 
 Idea
 ----
 
-When class ``B`` is embedded into class ``A``, all attributes (except attributes starting with underscore) of class ``B`` can be accessed and modified directly from class ``A``.
+When class ``B`` is embedded into class ``A``, all attributes (except attributes starting with underscore) of class
+``B`` can be accessed and modified directly from class ``A``.
 
 
 Examples

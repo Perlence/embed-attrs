@@ -1,7 +1,6 @@
 import attr as _attr
 
-__all__ = ('attrs', 'attr', 'PromotedAttribute', 'AmbiguousAttribute',
-           'INIT', 'EMBED_CLS_METADATA', 'EMBED_EXTRA_METADATA')
+__all__ = ('attrs', 'attr', 'INIT', 'EMBED_CLS_METADATA', 'EMBED_EXTRA_METADATA')
 
 EMBED_CLS_METADATA = '__embed_cls'
 EMBED_EXTRA_METADATA = '__embed_extra'
@@ -9,8 +8,22 @@ EMBED_EXTRA_METADATA = '__embed_extra'
 INIT = object()
 
 
+def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
+         cmp=True, hash=None, init=True, convert=None, metadata=None):
+    if metadata is None:
+        metadata = {}
+    metadata[EMBED_CLS_METADATA] = cls
+    if extra is not None:
+        metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
+    if default is INIT:
+        default = _attr.Factory(cls)
+    if validator is None:
+        validator = _attr.validators.instance_of(cls)
+    return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
+
+
 def attrs(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
-          hash=True, init=True, slots=False, frozen=False, str=False):
+          hash=None, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
         cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
 
@@ -52,50 +65,40 @@ def _try_to_promote(cls, name, embedded_attr):
     try:
         local_attr = getattr(cls, name)
     except AttributeError:
-        setattr(cls, name, PromotedAttribute(name, embedded_attr))
+        setattr(cls, name, _make_property(_property_tpl, name, promoted_name=embedded_attr.name))
     else:
-        if isinstance(local_attr, PromotedAttribute):
-            setattr(cls, name, AmbiguousAttribute(name))
+        if isinstance(local_attr, promoted_property):
+            setattr(cls, name, _make_property(_ambiguous_property_tpl, name))
 
 
-def attr(cls, extra=None, default=_attr.NOTHING, validator=None, repr=True,
-         cmp=True, hash=True, init=True, convert=None, metadata=None):
-    if metadata is None:
-        metadata = {}
-    metadata[EMBED_CLS_METADATA] = cls
-    if extra is not None:
-        metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
-    if default is INIT:
-        default = _attr.Factory(cls)
-    if validator is None:
-        validator = _attr.validators.instance_of(cls)
-    return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
+def _make_property(template, name, **format_args):
+    src = template.format(name=name, **format_args)
+    namespace = {'promoted_property': promoted_property}
+    exec(src, namespace)
+    prop = namespace[name]
+    return prop
 
 
-@_attr.s
-class PromotedAttribute:
-    name = _attr.ib()
-    embedded_attr = _attr.ib()
-
-    def __get__(self, obj, cls=None):
-        if obj is None:
-            return self
-        embedded_obj = getattr(obj, self.embedded_attr.name)
-        return getattr(embedded_obj, self.name)
-
-    def __set__(self, obj, value):
-        embedded_obj = getattr(obj, self.embedded_attr.name)
-        setattr(embedded_obj, self.name, value)
+class promoted_property(property):
+    pass
 
 
-@_attr.s
-class AmbiguousAttribute:
-    name = _attr.ib()
+_property_tpl = '''\
+@promoted_property
+def {name}(self):
+    return self.{promoted_name}.{name}
 
-    def __get__(self, obj, cls=None):
-        if obj is None:
-            return self
-        raise AttributeError("ambiguous selector '{}'".format(self.name))
+@{name}.setter
+def {name}(self, value):
+    self.{promoted_name}.{name} = value
+'''
 
-    def __set__(self, obj, value):
-        raise AttributeError("ambiguous selector '{}'".format(self.name))
+_ambiguous_property_tpl = '''\
+@property
+def {name}(self):
+    raise AttributeError("ambiguous selector '{name}'")
+
+@{name}.setter
+def {name}(self, other):
+    raise AttributeError("ambiguous selector '{name}'")
+'''
