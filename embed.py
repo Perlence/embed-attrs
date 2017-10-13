@@ -1,21 +1,17 @@
 import attr as _attr
 
-__all__ = ('attrs', 'attr', 'INIT', 'EMBED_CLS_METADATA', 'EMBED_EXTRA_METADATA')
+__all__ = ('attrs', 'attr', 'INIT', 'EMBED_CLS_METADATA')
 
 EMBED_CLS_METADATA = '__embed_cls'
-EMBED_EXTRA_METADATA = '__embed_extra'
 
 INIT = object()
 
 
-def attr(cls, extra=None, default=INIT, validator=None,
-         repr=True, cmp=True, hash=None, init=True, convert=None,
-         metadata=None):
+def attr(cls, default=INIT, validator=None, repr=True, cmp=True, hash=None,
+         init=True, convert=None, metadata=None):
     if metadata is None:
         metadata = {}
     metadata[EMBED_CLS_METADATA] = cls
-    if extra is not None:
-        metadata[EMBED_EXTRA_METADATA] = extra.replace(',', ' ').split()
     if default is INIT:
         default = _attr.Factory(cls)
     return _attr.ib(default, validator, repr, cmp, hash, init, convert, metadata)
@@ -49,10 +45,7 @@ def _get_embedded_attrs(cls_with_attrs):
 
 def _attrs_to_promote(embedded_attr):
     embedded_cls = embedded_attr.metadata.get(EMBED_CLS_METADATA)
-    extra_names = embedded_attr.metadata.get(EMBED_EXTRA_METADATA, [])
-    for name in dir(embedded_cls):
-        if not name.startswith('_') or name in extra_names:
-            yield name
+    return set(vars(embedded_cls))
 
 
 def _try_to_promote(cls, name, embedded_attr):

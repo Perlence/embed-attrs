@@ -8,8 +8,8 @@ Borrow attributes from other classes by *embedding* them. An experimental extens
 Idea
 ----
 
-When class ``B`` is embedded into class ``A``, all attributes (except attributes starting with underscore) of class
-``B`` can be accessed and modified directly from class ``A``.
+When class ``B`` is embedded into class ``A``, all attributes of class ``B`` can be accessed and modified directly from
+class ``A``.
 
 
 Examples
@@ -37,8 +37,7 @@ An example from "An Introduction to Programming in Go", converted to Python with
 
     @embed.attrs
     class Android:
-        # Keyword *extra* is used to select private attributes for promotion
-        person = embed.attr(Person, extra='_sunder __dunder__')
+        person = embed.attr(Person)
         model = attr.ib(default='')
 
     a = Android()

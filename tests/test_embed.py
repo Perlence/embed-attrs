@@ -24,7 +24,7 @@ def test_androids():
 
     @embed.attrs
     class Android:
-        person = embed.attr(Person, extra='_sunder __dunder__')
+        person = embed.attr(Person)
         model = attr.ib(default='')
 
         @property
