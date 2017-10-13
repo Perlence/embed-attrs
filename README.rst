@@ -2,7 +2,7 @@ embed-attrs
 ===========
 
 Borrow attributes from other classes by *embedding* them. An experimental extension of `attrs
-<https://github.com/hynek/attrs>`_.
+<https://github.com/python-attrs/attrs>`_.
 
 
 Idea
