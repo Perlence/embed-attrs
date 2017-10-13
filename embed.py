@@ -21,12 +21,9 @@ def attributes(maybe_cls=None, these=None, repr_ns=None, repr=True, cmp=True,
                hash=None, init=True, slots=False, frozen=False, str=False):
     def wrap(cls):
         cls_with_attrs = _attr.s(cls, these, repr_ns, repr, cmp, hash, init, slots, frozen, str)
-
-        embedded_attrs = _get_embedded_attrs(cls_with_attrs)
-        for embedded_attr in embedded_attrs:
+        for embedded_attr in _get_embedded_attrs(cls_with_attrs):
             for promoted_name in _attrs_to_promote(embedded_attr):
                 _try_to_promote(cls_with_attrs, promoted_name, embedded_attr)
-
         return cls_with_attrs
 
     if maybe_cls is None:
@@ -39,8 +36,11 @@ attrs = attributes
 
 
 def _get_embedded_attrs(cls_with_attrs):
-    return tuple(attrib for attrib in _attr.fields(cls_with_attrs)
-                 if attrib.metadata.get(EMBED_CLS_METADATA) is not None)
+    return filter(_is_embedded_attr, _attr.fields(cls_with_attrs))
+
+
+def _is_embedded_attr(attrib):
+    return attrib.metadata.get(EMBED_CLS_METADATA) is not None
 
 
 def _attrs_to_promote(embedded_attr):
