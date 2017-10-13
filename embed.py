@@ -1,6 +1,6 @@
 import attr as _attr
 
-__all__ = ('attrs', 'attr', 'INIT', 'EMBED_CLS_METADATA')
+__all__ = ('attributes', 'attrs', 'attr', 'INIT', 'EMBED_CLS_METADATA')
 
 EMBED_CLS_METADATA = '__embed_cls'
 
