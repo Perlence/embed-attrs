@@ -81,7 +81,7 @@ def {name}(self, value):
 '''
 
 _ambiguous_property_tpl = '''\
-@property
+@promoted_property
 def {name}(self):
     raise AttributeError("ambiguous selector '{name}'")
 
